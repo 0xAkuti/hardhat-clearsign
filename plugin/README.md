@@ -10,6 +10,7 @@ A basic Hardhat 3 plugin that adds a `generate-7730` task that executes Python c
 - Supports detailed output with the `--detail` flag
 - Built for Hardhat 3 using the new plugin architecture
 - Hooks into compilation process with the `--generate-7-7-3-0` global flag
+- **NEW**: Adds a `publish-kg` task for publishing Smart Contract Metadata to The Graph Knowledge Graph
 
 ## Usage
 
@@ -25,6 +26,26 @@ Run with detailed output:
 
 ```bash
 npx hardhat generate-7730 --detail
+```
+
+### Publish to Knowledge Graph
+
+Publish Smart Contract Metadata to The Graph Knowledge Graph:
+
+```bash
+npx hardhat publish-kg \
+  --contract 0x1234567890abcdef1234567890abcdef12345678 \
+  --chain-id 8453 \
+  --contract-name "ComplexCounter" \
+  --erc7730-file "./artifacts/ComplexCounter-erc7730.json" \
+  --private-key 0x... \
+  --testnet
+```
+
+Environment variables can be used instead of CLI params:
+```bash
+export PRIVATE_KEY=0x...
+npx hardhat publish-kg --contract 0x... --chain-id 8453 --contract-name "ComplexCounter" --erc7730-file "./artifacts/ComplexCounter-erc7730.json" --testnet
 ```
 
 ### Compilation Hook
@@ -45,9 +66,11 @@ Note: The flag name is displayed as `--generate-7-7-3-0` in the CLI (kebab-case)
 plugin/
 ├── index.ts              # Main plugin export
 ├── tasks/
-│   └── generate-7730.ts  # Task definition
+│   ├── generate-7730.ts  # Task definition for ERC-7730 generation
+│   └── publish-kg.ts     # Task definition for Knowledge Graph publishing
 ├── actions/
-│   └── generate-7730.ts  # Task action logic
+│   ├── generate-7730.ts  # Task action logic for ERC-7730 generation
+│   └── publish-kg.ts     # Task action logic for Knowledge Graph publishing
 ├── hook-handlers/
 │   └── solidity.ts       # Solidity compilation hooks
 └── README.md            # This file
@@ -107,7 +130,56 @@ if artifact_json:
     print(f"Deployed address: {os.environ.get('DEPLOYED_CONTRACT_ADDRESS')}")
 ```
 
+## Knowledge Graph Publishing (`publish-kg`)
+
+The `publish-kg` task publishes Smart Contract Metadata to The Graph Knowledge Graph using the `@graphprotocol/grc-20` library.
+
+### What it does:
+
+1. **Creates structured metadata** for smart contracts including:
+   - Contract Address
+   - Chain ID
+   - Contract Name  
+   - ERC-7730 JSON metadata
+
+2. **Publishes to The Graph Knowledge Graph** by:
+   - Creating a "Smart Contract Metadata" entity type
+   - Publishing the metadata as an entity in the knowledge graph
+   - Storing the data on IPFS and recording the reference on-chain
+
+3. **Supports both testnet and mainnet** deployments
+
+### Parameters:
+
+- `--contract`: Contract address (required)
+- `--chain-id`: Blockchain chain ID (required)
+- `--contract-name`: Name of the contract (required)
+- `--erc7730-file`: Path to the ERC-7730 JSON file (required)
+- `--private-key`: Wallet private key (optional, can use PRIVATE_KEY env var)
+- `--space-id`: Existing space ID to use (optional, creates new space if not provided)
+- `--testnet`: Use testnet instead of mainnet (optional)
+
+### Example Output:
+
+```
+📋 Publishing Smart Contract Metadata to Knowledge Graph
+Contract: 0x1234567890abcdef1234567890abcdef12345678
+Chain ID: 8453
+Contract Name: ComplexCounter
+Network: TESTNET
+📱 Wallet address: 0x...
+✅ Created space: ABC123
+🔗 Created entity: DEF456
+📤 Publishing to IPFS...
+📝 IPFS CID: ipfs://QmXYZ...
+📨 Transaction target: 0x...
+🚀 Sending transaction...
+✅ Transaction sent: 0x...
+🎉 Smart Contract Metadata successfully published to Knowledge Graph!
+```
+
 ## Requirements
 
 - Node.js with child_process support
-- `uvx` and `pycowsay` for the Python command (or replace with your own command) 
+- `uvx` and `pycowsay` for the Python command (or replace with your own command)
+- `@graphprotocol/grc-20` library for Knowledge Graph publishing 
