@@ -1,10 +1,11 @@
 # Generate 7730 Plugin
 
-A basic Hardhat 3 plugin that adds a `generate-7730` task for demonstration purposes.
+A basic Hardhat 3 plugin that adds a `generate-7730` task that executes Python commands.
 
 ## Features
 
 - Adds a new task called `generate-7730`
+- Executes Python commands using `uvx pycowsay Hello from Hardhat`
 - Supports detailed output with the `--detail` flag
 - Built for Hardhat 3 using the new plugin architecture
 - Hooks into compilation process with the `--generate-7-7-3-0` global flag
@@ -68,6 +69,11 @@ const config: HardhatUserConfig = {
 
 To extend this plugin:
 
-1. Modify the action in `actions/generate-7730.ts`
+1. Modify the Python command in `actions/generate-7730.ts` (currently uses `uvx pycowsay Hello from Hardhat`)
 2. Add additional flags or parameters in `tasks/generate-7730.ts`
-3. Create additional tasks by adding them to the `tasks` array in `index.ts` 
+3. Create additional tasks by adding them to the `tasks` array in `index.ts`
+
+## Requirements
+
+- Node.js with child_process support
+- `uvx` and `pycowsay` for the Python command (or replace with your own command) 
