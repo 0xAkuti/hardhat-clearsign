@@ -7,8 +7,11 @@ A basic Hardhat 3 plugin that adds a `generate-7730` task for demonstration purp
 - Adds a new task called `generate-7730`
 - Supports detailed output with the `--detail` flag
 - Built for Hardhat 3 using the new plugin architecture
+- Hooks into compilation process with the `--generate-7-7-3-0` global flag
 
 ## Usage
+
+### Standalone Task
 
 Run the task with:
 
@@ -22,6 +25,18 @@ Run with detailed output:
 npx hardhat generate-7730 --detail
 ```
 
+### Compilation Hook
+
+Run automatically after compilation:
+
+```bash
+npx hardhat compile --generate-7-7-3-0
+```
+
+This will compile your contracts and then automatically run the generate-7730 task.
+
+Note: The flag name is displayed as `--generate-7-7-3-0` in the CLI (kebab-case) but defined as `generate7730` in the code (camelCase).
+
 ## Plugin Structure
 
 ```
@@ -31,6 +46,8 @@ plugin/
 │   └── generate-7730.ts  # Task definition
 ├── actions/
 │   └── generate-7730.ts  # Task action logic
+├── hook-handlers/
+│   └── solidity.ts       # Solidity compilation hooks
 └── README.md            # This file
 ```
 
