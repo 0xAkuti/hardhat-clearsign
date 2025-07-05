@@ -2,6 +2,7 @@ import type { HardhatUserConfig } from "hardhat/config";
 
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 import { configVariable } from "hardhat/config";
+import generate7730Plugin from "./plugin/index.js";
 
 const config: HardhatUserConfig = {
   /*
@@ -11,7 +12,7 @@ const config: HardhatUserConfig = {
    * Note: A `hardhat-toolbox` like plugin for Hardhat 3 hasn't been defined yet,
    * so this list is larger than what you would normally have.
    */
-  plugins: [hardhatToolboxViemPlugin],
+  plugins: [hardhatToolboxViemPlugin, generate7730Plugin],
   solidity: {
     /*
      * Hardhat 3 supports different build profiles, allowing you to configure
