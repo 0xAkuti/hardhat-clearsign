@@ -6,6 +6,7 @@ import path from "path";
 
 export interface TaskActionArguments {
   detail: boolean;
+  deploymentId?: string;
 }
 
 const action: NewTaskActionFunction<TaskActionArguments> = async (
@@ -49,82 +50,168 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
     let contractArtifactPath = "";
     
     try {
-      // Get artifacts path from config or use default
-      const artifactsPath = hre.config?.paths?.artifacts || "artifacts";
-      const contractsDir = join(artifactsPath, "contracts");
-      
-      if (args.detail) {
-        console.log(`🔍 Searching for contracts in: ${contractsDir}`);
-      }
-      
-      // Find the main contract artifact
-      const { readdirSync, statSync } = await import("fs");
-      
-      let foundArtifact = false;
-      let artifactPath = "";
-      
-      // Look for .sol directories in the contracts folder
-      const contractDirs = readdirSync(contractsDir).filter(item => {
-        const itemPath = join(contractsDir, item);
-        return statSync(itemPath).isDirectory() && item.endsWith('.sol');
-      });
-      
-      if (args.detail) {
-        console.log(`📁 Found contract directories: ${contractDirs.join(', ')}`);
-      }
-      
-      // Try to find the main contract (prefer non-test contracts)
-      for (const contractDir of contractDirs) {
-        if (!contractDir.includes('.t.sol')) { // Skip test contracts
-          const contractDirPath = join(contractsDir, contractDir);
-          const jsonFiles = readdirSync(contractDirPath).filter(file => file.endsWith('.json'));
-          
-          // Find the main contract JSON (same name as directory without .sol)
-          const baseName = contractDir.replace('.sol', '');
-          const mainJsonFile = `${baseName}.json`;
-          
-          if (jsonFiles.includes(mainJsonFile)) {
-            artifactPath = join(contractDirPath, mainJsonFile);
-            contractArtifactPath = path.resolve(artifactPath);
-            contractName = baseName;
-            // Derive the source file path (absolute)
-            contractSourcePath = path.resolve(join("contracts", contractDir));
-            foundArtifact = true;
-            break;
+      // If a deploymentId is provided, attempt to load data from the Ignition deployment folder
+      if (args.deploymentId && args.deploymentId !== "") {
+        const deploymentPath = path.resolve(
+          "ignition",
+          "deployments",
+          args.deploymentId
+        );
+
+        if (!hre.artifacts || !(await import("fs")).existsSync(deploymentPath)) {
+          console.warn(
+            `⚠️  Deployment folder not found for deploymentId '${args.deploymentId}'. Falling back to artifact discovery.`
+          );
+        } else {
+          if (args.detail) {
+            console.log(`📦 Loading deployment data from: ${deploymentPath}`);
           }
+
+          // 1. Chain ID (from folder name or journal)
+          const chainIdMatch = args.deploymentId.match(/chain-(\d+)/);
+          if (chainIdMatch) {
+            chainId = chainIdMatch[1];
+          } else {
+            // Read first line of journal for chainId
+            try {
+              const journalPath = path.join(deploymentPath, "journal.jsonl");
+              const firstLine = readFileSync(journalPath, "utf-8").split("\n")[1];
+              if (firstLine) {
+                const parsed = JSON.parse(firstLine);
+                if (parsed.chainId) {
+                  chainId = parsed.chainId.toString();
+                }
+              }
+            } catch {}
+          }
+
+          // 2. Deployed addresses
+          const deployedAddrPath = path.join(
+            deploymentPath,
+            "deployed_addresses.json"
+          );
+          let deployedAddress = "";
+          try {
+            const deployedJson = JSON.parse(
+              readFileSync(deployedAddrPath, "utf-8")
+            ) as Record<string, string>;
+            const firstKey = Object.keys(deployedJson)[0];
+            deployedAddress = deployedJson[firstKey];
+            contractName = firstKey.split("#").pop() || firstKey;
+          } catch (e) {
+            console.warn("⚠️  Could not read deployed_addresses.json:", (e as Error).message);
+          }
+
+          // 3. Artifact JSON (take first .json file inside artifacts/ not *.dbg.json)
+          const artifactsDir = path.join(deploymentPath, "artifacts");
+          const { readdirSync } = await import("fs");
+          const artifactFiles = readdirSync(artifactsDir).filter(
+            (f) => f.endsWith(".json") && !f.endsWith(".dbg.json")
+          );
+          if (artifactFiles.length > 0) {
+            const artifactPath = path.join(artifactsDir, artifactFiles[0]);
+            contractArtifactPath = artifactPath;
+            artifactJson = readFileSync(artifactPath, "utf-8");
+
+            try {
+              const parsedArtifact = JSON.parse(artifactJson);
+              const sourceName = parsedArtifact.sourceName as string;
+              contractSourcePath = path.resolve(sourceName);
+              if (!contractName) contractName = parsedArtifact.contractName;
+            } catch {}
+          }
+
+          // If detail flag, output info
+          if (args.detail) {
+            console.log(`📄 Deployment contract: ${contractName}`);
+            console.log(`🏠 Deployed at address: ${deployedAddress}`);
+            console.log(`🌐 Chain ID (from deployment): ${chainId}`);
+          }
+
+          // Add deployed address to env as well
+          process.env["DEPLOYED_CONTRACT_ADDRESS"] = deployedAddress;
         }
       }
-      
-      if (!foundArtifact && contractDirs.length > 0) {
-        // Fallback: use the first available contract
-        const firstContractDir = contractDirs[0];
-        const contractDirPath = join(contractsDir, firstContractDir);
-        const jsonFiles = readdirSync(contractDirPath).filter(file => file.endsWith('.json'));
-        
-        if (jsonFiles.length > 0) {
-          const firstJsonFile = jsonFiles[0];
-          artifactPath = join(contractDirPath, firstJsonFile);
-          contractArtifactPath = path.resolve(artifactPath);
-          contractName = firstJsonFile.replace('.json', '');
-          contractSourcePath = path.resolve(join("contracts", firstContractDir));
-          foundArtifact = true;
-        }
-      }
-      
-      if (foundArtifact) {
-        const artifactData = readFileSync(artifactPath, "utf-8");
-        artifactJson = artifactData;
+
+      // If artifactJson still empty (either no deploymentId or fallback)
+      if (!artifactJson) {
+        // Get artifacts path from config or use default
+        const artifactsPath = hre.config?.paths?.artifacts || "artifacts";
+        const contractsDir = join(artifactsPath, "contracts");
         
         if (args.detail) {
-          console.log(`📄 Artifact loaded successfully: ${contractName}`);
-          console.log(`📁 Artifact path: ${contractArtifactPath}`);
-          console.log(`📄 Source file path: ${contractSourcePath}`);
+          console.log(`🔍 Searching for contracts in: ${contractsDir}`);
         }
-      } else {
-        console.warn("⚠️  No contract artifacts found");
-        artifactJson = "{}";
-        contractSourcePath = "";
-        contractArtifactPath = "";
+        
+        // Find the main contract artifact
+        const { readdirSync, statSync } = await import("fs");
+        
+        let foundArtifact = false;
+        let artifactPath = "";
+        
+        // Look for .sol directories in the contracts folder
+        const contractDirs = readdirSync(contractsDir).filter(item => {
+          const itemPath = join(contractsDir, item);
+          return statSync(itemPath).isDirectory() && item.endsWith('.sol');
+        });
+        
+        if (args.detail) {
+          console.log(`📁 Found contract directories: ${contractDirs.join(', ')}`);
+        }
+        
+        // Try to find the main contract (prefer non-test contracts)
+        for (const contractDir of contractDirs) {
+          if (!contractDir.includes('.t.sol')) { // Skip test contracts
+            const contractDirPath = join(contractsDir, contractDir);
+            const jsonFiles = readdirSync(contractDirPath).filter(file => file.endsWith('.json'));
+            
+            // Find the main contract JSON (same name as directory without .sol)
+            const baseName = contractDir.replace('.sol', '');
+            const mainJsonFile = `${baseName}.json`;
+            
+            if (jsonFiles.includes(mainJsonFile)) {
+              artifactPath = join(contractDirPath, mainJsonFile);
+              contractArtifactPath = path.resolve(artifactPath);
+              contractName = baseName;
+              // Derive the source file path (absolute)
+              contractSourcePath = path.resolve(join("contracts", contractDir));
+              foundArtifact = true;
+              break;
+            }
+          }
+        }
+        
+        if (!foundArtifact && contractDirs.length > 0) {
+          // Fallback: use the first available contract
+          const firstContractDir = contractDirs[0];
+          const contractDirPath = join(contractsDir, firstContractDir);
+          const jsonFiles = readdirSync(contractDirPath).filter(file => file.endsWith('.json'));
+          
+          if (jsonFiles.length > 0) {
+            const firstJsonFile = jsonFiles[0];
+            artifactPath = join(contractDirPath, firstJsonFile);
+            contractArtifactPath = path.resolve(artifactPath);
+            contractName = firstJsonFile.replace('.json', '');
+            contractSourcePath = path.resolve(join("contracts", firstContractDir));
+            foundArtifact = true;
+          }
+        }
+        
+        if (foundArtifact) {
+          const artifactData = readFileSync(artifactPath, "utf-8");
+          artifactJson = artifactData;
+          
+          if (args.detail) {
+            console.log(`📄 Artifact loaded successfully: ${contractName}`);
+            console.log(`📁 Artifact path: ${contractArtifactPath}`);
+            console.log(`📄 Source file path: ${contractSourcePath}`);
+          }
+        } else {
+          console.warn("⚠️  No contract artifacts found");
+          artifactJson = "{}";
+          contractSourcePath = "";
+          contractArtifactPath = "";
+        }
       }
       
     } catch (artifactError) {
@@ -150,6 +237,7 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
           CONTRACT_ARTIFACT: artifactJson,
           CONTRACT_SOURCE_PATH: contractSourcePath,
           CONTRACT_ARTIFACT_PATH: contractArtifactPath,
+          DEPLOYED_CONTRACT_ADDRESS: process.env["DEPLOYED_CONTRACT_ADDRESS"] || "",
         }
       });
       
@@ -186,6 +274,9 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
       console.log(`   CONTRACT_ARTIFACT: <JSON data available${contractName ? ` for ${contractName}` : ''}>`);
       console.log(`   CONTRACT_SOURCE_PATH: ${contractSourcePath || '<not found>'}`);
       console.log(`   CONTRACT_ARTIFACT_PATH: ${contractArtifactPath || '<not found>'}`);
+      if (process.env["DEPLOYED_CONTRACT_ADDRESS"]) {
+        console.log(`   DEPLOYED_CONTRACT_ADDRESS: ${process.env["DEPLOYED_CONTRACT_ADDRESS"]}`);
+      }
     }
     
     console.log("✅ Task generate-7730 completed successfully!");

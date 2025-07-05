@@ -82,6 +82,7 @@ The plugin automatically passes the following environment variables to the Pytho
 - `CONTRACT_ARTIFACT`: Complete JSON artifact of the main compiled contract including ABI, bytecode, and metadata
 - `CONTRACT_SOURCE_PATH`: Absolute path to the Solidity source file of the main contract (e.g., `/workspaces/ethglobal-cannes/hh-plugin/contracts/ComplexCounter.sol`)
 - `CONTRACT_ARTIFACT_PATH`: Absolute path to the artifact JSON file of the main contract (e.g., `/workspaces/ethglobal-cannes/hh-plugin/artifacts/contracts/ComplexCounter.sol/ComplexCounter.json`)
+- `DEPLOYED_CONTRACT_ADDRESS`: Address where the contract was deployed (only when `--deployment-id` is used)
 
 ### Example Python Usage
 
@@ -103,6 +104,7 @@ if artifact_json:
     print(f"Generating ERC7730 for {contract_name} on chain {chain_id}")
     print(f"Source file (absolute): {source_path}")
     print(f"Artifact file (absolute): {artifact_path}")
+    print(f"Deployed address: {os.environ.get('DEPLOYED_CONTRACT_ADDRESS')}")
 ```
 
 ## Requirements
