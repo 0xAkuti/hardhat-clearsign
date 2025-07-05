@@ -6,7 +6,7 @@ A basic Hardhat 3 plugin that adds a `generate-7730` task that executes Python c
 
 - Adds a new task called `generate-7730`
 - Executes Python commands with network context and contract artifacts
-- Passes chainId and main contract artifact JSON to Python via environment variables
+- Passes chainId, main contract artifact JSON, and source file path to Python via environment variables
 - Supports detailed output with the `--detail` flag
 - Built for Hardhat 3 using the new plugin architecture
 - Hooks into compilation process with the `--generate-7-7-3-0` global flag
@@ -80,6 +80,7 @@ The plugin automatically passes the following environment variables to the Pytho
 
 - `CHAIN_ID`: The blockchain network's chain ID (e.g., "31337" for Hardhat Network)
 - `CONTRACT_ARTIFACT`: Complete JSON artifact of the main compiled contract including ABI, bytecode, and metadata
+- `CONTRACT_SOURCE_PATH`: Absolute path to the Solidity source file of the main contract (e.g., `/workspaces/ethglobal-cannes/hh-plugin/contracts/ComplexCounter.sol`)
 
 ### Example Python Usage
 
@@ -90,6 +91,7 @@ import json
 # Access the passed data
 chain_id = os.environ.get('CHAIN_ID')
 artifact_json = os.environ.get('CONTRACT_ARTIFACT')
+source_path = os.environ.get('CONTRACT_SOURCE_PATH')
 
 if artifact_json:
     artifact = json.loads(artifact_json)
@@ -97,6 +99,7 @@ if artifact_json:
     abi = artifact.get('abi', [])
     # Process the ABI for ERC7730 generation
     print(f"Generating ERC7730 for {contract_name} on chain {chain_id}")
+    print(f"Source file (absolute): {source_path}")
 ```
 
 ## Requirements

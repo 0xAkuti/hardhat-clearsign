@@ -2,6 +2,7 @@ import type { NewTaskActionFunction } from "hardhat/types/tasks";
 import { spawn } from "child_process";
 import { readFileSync } from "fs";
 import { join } from "path";
+import path from "path";
 
 export interface TaskActionArguments {
   detail: boolean;
@@ -44,6 +45,7 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
     // Discover and read the main contract artifact JSON
     let artifactJson = "";
     let contractName = "";
+    let contractSourcePath = "";
     
     try {
       // Get artifacts path from config or use default
@@ -83,6 +85,8 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
           if (jsonFiles.includes(mainJsonFile)) {
             artifactPath = join(contractDirPath, mainJsonFile);
             contractName = baseName;
+            // Derive the source file path (absolute)
+            contractSourcePath = path.resolve(join("contracts", contractDir));
             foundArtifact = true;
             break;
           }
@@ -99,6 +103,8 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
           const firstJsonFile = jsonFiles[0];
           artifactPath = join(contractDirPath, firstJsonFile);
           contractName = firstJsonFile.replace('.json', '');
+          contractSourcePath = join("contracts", firstContractDir);
+          contractSourcePath = path.resolve(contractSourcePath);
           foundArtifact = true;
         }
       }
@@ -110,16 +116,19 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
         if (args.detail) {
           console.log(`📄 Artifact loaded successfully: ${contractName}`);
           console.log(`📁 Artifact path: ${artifactPath}`);
+          console.log(`📄 Source file path: ${contractSourcePath}`);
         }
       } else {
         console.warn("⚠️  No contract artifacts found");
         artifactJson = "{}";
+        contractSourcePath = "";
       }
       
     } catch (artifactError) {
       console.warn("⚠️  Could not load contract artifact:", (artifactError as Error).message);
       // Continue with empty artifact JSON
       artifactJson = "{}";
+      contractSourcePath = "";
     }
     
     console.log("🐍 Executing Python command with chainId and artifact...");
@@ -134,7 +143,8 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
         env: {
           ...process.env,
           CHAIN_ID: chainId,
-          CONTRACT_ARTIFACT: artifactJson
+          CONTRACT_ARTIFACT: artifactJson,
+          CONTRACT_SOURCE_PATH: contractSourcePath,
         }
       });
       
@@ -169,6 +179,7 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
       console.log("💾 Environment variables passed to Python:");
       console.log(`   CHAIN_ID: ${chainId}`);
       console.log(`   CONTRACT_ARTIFACT: <JSON data available${contractName ? ` for ${contractName}` : ''}>`);
+      console.log(`   CONTRACT_SOURCE_PATH: ${contractSourcePath || '<not found>'}`);
     }
     
     console.log("✅ Task generate-7730 completed successfully!");
