@@ -222,14 +222,45 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
       contractArtifactPath = "";
     }
     
-    console.log("🐍 Executing Python command with chainId and artifact...");
+    console.log("🐍 Executing ERC-7730 generation with Python...");
     
-    // Execute the Python command with chainId and artifact as arguments
+    // Determine output path for the ERC-7730 file
+    let outputPath = "";
+    if (args.deploymentId && contractName) {
+      // Save to deployment artifacts folder
+      const deploymentArtifactsPath = path.resolve("ignition", "deployments", args.deploymentId, "artifacts");
+      outputPath = path.join(deploymentArtifactsPath, `${contractName}-erc7730.json`);
+    } else if (contractName) {
+      // Fallback to current directory
+      outputPath = path.resolve(`${contractName}-erc7730.json`);
+    } else {
+      // Generic fallback
+      outputPath = path.resolve("contract-erc7730.json");
+    }
+    
+    if (args.detail) {
+      console.log(`💾 Output file: ${outputPath}`);
+    }
+    
+    // Execute the Python command to generate ERC-7730 descriptor using local development version
     const result = await new Promise<string>((resolve, reject) => {
-      const childProcess = spawn("uvx", [
-        "pycowsay", 
-        `Hello from Hardhat! Chain: ${chainId}`
-      ], {
+      const pythonArgs = [
+        "run", "python", "-m", "erc7730.main", "generate",
+        "--local",
+        "--auto",
+        "--output", outputPath
+      ];
+      
+      // Path to the local Python ERC-7730 development project
+      const pythonProjectPath = path.resolve("../python-erc7730");
+      
+      if (args.detail) {
+        console.log(`🐍 Using local Python project: ${pythonProjectPath}`);
+        console.log(`📦 Python command: uv ${pythonArgs.join(' ')}`);
+      }
+      
+      const childProcess = spawn("uv", pythonArgs, {
+        cwd: pythonProjectPath,
         stdio: ["pipe", "pipe", "pipe"],
         env: {
           ...process.env,
@@ -279,7 +310,15 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
       }
     }
     
-    console.log("✅ Task generate-7730 completed successfully!");
+    console.log(`✅ ERC-7730 descriptor generated successfully!`);
+    
+    // Check if file was created and provide feedback
+    const { existsSync } = await import("fs");
+    if (existsSync(outputPath)) {
+      console.log(`📄 File saved: ${outputPath}`);
+    } else {
+      console.warn(`⚠️  Output file not found at expected location: ${outputPath}`);
+    }
     
   } catch (error) {
     console.error("❌ Error executing Python command:", error);
