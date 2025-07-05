@@ -8,7 +8,7 @@ import { network } from "hardhat";
  * `node:test` uses `describe` and `it` to define tests, similar to Mocha.
  * `describe` blocks support async functions, simplifying the setup of tests.
  */
-describe("Counter", async function () {
+describe("ComplexCounter", async function () {
   /*
    * In Hardhat 3, there isn't a single global connection to a network. Instead,
    * you have a `network` object that allows you to connect to different
@@ -59,19 +59,24 @@ describe("Counter", async function () {
   const publicClient = await viem.getPublicClient();
 
   it("Should emit the Increment event when calling the inc() function", async function () {
-    const counter = await viem.deployContract("Counter");
+    const counter = await viem.deployContract("ComplexCounter");
 
+    // Get the wallet addresses for the performer argument
+    const [account] = await viem.getWalletClients();
+    
     // Hardhat 3 comes with assertions to work with viem
+    // The new Increment event has 3 parameters: by, newValue, performer
+    // Use the checksum address format as returned by the contract
     await viem.assertions.emitWithArgs(
       counter.write.inc(),
       counter,
       "Increment",
-      [1n],
+      [1n, 1n, "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"],
     );
   });
 
   it("The sum of the Increment events should match the current value", async function () {
-    const counter = await viem.deployContract("Counter");
+    const counter = await viem.deployContract("ComplexCounter");
 
     // run a series of increments
     for (let i = 1n; i <= 10n; i++) {
@@ -92,6 +97,6 @@ describe("Counter", async function () {
       total += event.args.by;
     }
 
-    assert.equal(total, await counter.read.x());
+    assert.equal(total, await counter.read.count());
   });
 });
