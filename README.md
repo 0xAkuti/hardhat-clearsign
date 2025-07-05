@@ -1,73 +1,63 @@
-# Hardhat 3 Alpha: `node:test` and `viem` example project
+# Example Hardhat 3 Project: Clearsign Plugin for ERC7730 Generation
 
-> **WARNING**: This example project uses Hardhat 3, which is still in development. Hardhat 3 is not yet intended for production use.
+This repository is an example Hardhat 3 project created to demonstrate the **clearsign plugin**, which generates [ERC7730](https://eips.ethereum.org/EIPS/eip-7730) compliant metadata for smart contracts. ERC7730 is a new Ethereum standard for contract interface discovery and machine-readable metadata, designed to improve contract interoperability and developer tooling. You can find more about ERC7730 online and in the official EIP.
 
-Welcome to the Hardhat 3 alpha version! This project showcases some of the changes and new features coming in Hardhat 3.
+The **clearsign plugin** is built using the new Hardhat 3 plugin architecture, showcasing best practices for modern plugin development. It integrates with the Hardhat compilation process and exposes a custom task to generate ERC7730 JSON using both contract artifacts and source code. The plugin is designed for extensibility and real-world use, and is demonstrated here as part of our submission for the **EthGlobal Cannes Hackathon**.
 
-To learn more about the Hardhat 3 Alpha, please visit [its tutorial](https://hardhat.org/hardhat3-alpha). To share your feedback, join our [Hardhat 3 Alpha](https://hardhat.org/hardhat3-alpha-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new?template=hardhat-3-alpha.yml) in our GitHub issue tracker.
+---
 
-## Project Overview
+## Plugin Features
 
-This example project includes:
-
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using [`node:test`](nodejs.org/api/test.html), the new Node.js native test runner, and [`viem`](https://viem.sh/).
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
-
-## Navigating the Project
-
-To get the most out of this example project, we recommend exploring the files in the following order:
-
-1. Read the `hardhat.config.ts` file, which contains the project configuration and explains multiple changes.
-2. Review the "Running Tests" section and explore the files in the `contracts/` and `test/` directories.
-3. Read the "Make a deployment to Sepolia" section and follow the instructions.
-
-Each file includes inline explanations of its purpose and highlights the changes and new features introduced in Hardhat 3.
+- Hardhat 3 compatible plugin architecture
+- Custom task: `generate-7730` for generating ERC7730 metadata
+- Compilation hook: automatically runs after compile with `--generate-7-7-3-0`
+- Passes contract artifact, source file, and network context to downstream tools (e.g., Python)
+- Example integration for further ERC7730 processing
 
 ## Usage
 
-### Running Tests
+1. Install dependencies and build the project:
+   ```sh
+   npm install
+   npx hardhat compile
+   ```
+2. Run the custom task:
+   ```sh
+   npx hardhat generate-7730 --detail
+   ```
+3. Or use the compilation hook:
+   ```sh
+   npx hardhat compile --generate-7-7-3-0
+   ```
 
-To run all the tests in the project, execute the following command:
+## Environment Variables Passed to Python
 
-```shell
-npx hardhat test
-```
+- `CHAIN_ID`: The blockchain network's chain ID (e.g., "31337" for Hardhat Network)
+- `CONTRACT_ARTIFACT`: Complete JSON artifact of the main compiled contract including ABI, bytecode, and metadata
+- `CONTRACT_SOURCE_PATH`: Absolute path to the Solidity source file of the main contract (e.g., `/workspaces/ethglobal-cannes/hh-plugin/contracts/ComplexCounter.sol`)
+- `CONTRACT_ARTIFACT_PATH`: Absolute path to the artifact JSON file of the main contract (e.g., `/workspaces/ethglobal-cannes/hh-plugin/artifacts/contracts/ComplexCounter.sol/ComplexCounter.json`)
 
-You can also selectively run the Solidity or `node:test` tests:
+### Example Python Usage
 
-```shell
-npx hardhat test solidity
-npx hardhat test nodejs
-```
+```python
+import os
+import json
 
-### Make a deployment to Sepolia
+chain_id = os.environ.get('CHAIN_ID')
+artifact_json = os.environ.get('CONTRACT_ARTIFACT')
+source_path = os.environ.get('CONTRACT_SOURCE_PATH')
+artifact_path = os.environ.get('CONTRACT_ARTIFACT_PATH')
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
-
-To run the deployment to a local chain:
-
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
-```
-
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
-
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
-
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
-
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
-```
-
-After setting the variable, you can run the deployment with the Sepolia network:
-
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
+if artifact_json:
+    artifact = json.loads(artifact_json)
+    contract_name = artifact.get('contractName', 'Unknown')
+    abi = artifact.get('abi', [])
+    # Process the ABI for ERC7730 generation
+    print(f"Generating ERC7730 for {contract_name} on chain {chain_id}")
+    print(f"Source file (absolute): {source_path}")
+    print(f"Artifact file (absolute): {artifact_path}")
 ```
 
 ---
 
-Feel free to explore the project and provide feedback on your experience with Hardhat 3 Alpha!
+For more details on ERC7730, see the [official EIP-7730](https://eips.ethereum.org/EIPS/eip-7730) and related resources online.
