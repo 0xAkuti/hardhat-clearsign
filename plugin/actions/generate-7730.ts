@@ -13,12 +13,7 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
   args,
   hre
 ) => {
-  console.log("🚀 Running generate-7730 task");
-  
-  if (args.detail) {
-    console.log("📋 Task arguments:", args);
-    console.log("🏗️  Hardhat Runtime Environment available");
-  }
+  console.log("🚀 Generating ERC-7730 descriptor...");
   
   try {
     // Get the chainId from the current network
@@ -38,10 +33,7 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
       console.warn("⚠️  Could not determine network info, using defaults");
     }
     
-    if (args.detail) {
-      console.log(`🔗 Chain ID: ${chainId}`);
-      console.log(`🌐 Network: ${networkName}`);
-    }
+    // Network info available for debugging if needed
     
     // Discover and read the main contract artifact JSON
     let artifactJson = "";
@@ -61,12 +53,10 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
 
         if (!hre.artifacts || !(await import("fs")).existsSync(deploymentPath)) {
           console.warn(
-            `⚠️  Deployment folder not found for deploymentId '${args.deploymentId}'. Falling back to artifact discovery.`
+            `⚠️  Deployment '${args.deploymentId}' not found. Falling back to artifact discovery.`
           );
         } else {
-          if (args.detail) {
-            console.log(`📦 Loading deployment data from: ${deploymentPath}`);
-          }
+          console.log(`📦 Loading deployment: ${args.deploymentId}`);
 
           // 1. Chain ID (from folder name or journal)
           const chainIdMatch = args.deploymentId.match(/chain-(\d+)/);
@@ -121,12 +111,8 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
             } catch {}
           }
 
-          // If detail flag, output info
-          if (args.detail) {
-            console.log(`📄 Deployment contract: ${contractName}`);
-            console.log(`🏠 Deployed at address: ${deployedAddress}`);
-            console.log(`🌐 Chain ID (from deployment): ${chainId}`);
-          }
+          // Found deployment data
+          console.log(`📄 Contract: ${contractName} (${deployedAddress})`);
 
           // Add deployed address to env as well
           process.env["DEPLOYED_CONTRACT_ADDRESS"] = deployedAddress;
@@ -139,9 +125,7 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
         const artifactsPath = hre.config?.paths?.artifacts || "artifacts";
         const contractsDir = join(artifactsPath, "contracts");
         
-        if (args.detail) {
-          console.log(`🔍 Searching for contracts in: ${contractsDir}`);
-        }
+        console.log(`🔍 Searching for contracts...`);
         
         // Find the main contract artifact
         const { readdirSync, statSync } = await import("fs");
@@ -238,9 +222,7 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
       outputPath = path.resolve("contract-erc7730.json");
     }
     
-    if (args.detail) {
-      console.log(`💾 Output file: ${outputPath}`);
-    }
+    console.log(`🤖 Generating ERC-7730 with AI assistance...`);
     
     // Execute the Python command to generate ERC-7730 descriptor using local development version
     const result = await new Promise<string>((resolve, reject) => {
@@ -254,10 +236,7 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
       // Path to the local Python ERC-7730 development project
       const pythonProjectPath = path.resolve("../python-erc7730");
       
-      if (args.detail) {
-        console.log(`🐍 Using local Python project: ${pythonProjectPath}`);
-        console.log(`📦 Python command: uv ${pythonArgs.join(' ')}`);
-      }
+      // Removed verbose debug output for cleaner console
       
       const childProcess = spawn("uv", pythonArgs, {
         cwd: pythonProjectPath,
@@ -286,9 +265,11 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
         if (code === 0) {
           resolve(stdout);
         } else {
-          console.log("Python stdout:", stdout);
-          console.log("Python stderr:", stderr);
-          reject(new Error(`Python command failed with code ${code}: ${stderr}`));
+          // Only show error details if there's an actual error
+          if (stderr.trim()) {
+            console.error("❌ Python error:", stderr.trim());
+          }
+          reject(new Error(`Python command failed with code ${code}`));
         }
       });
       
@@ -297,29 +278,9 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
       });
     });
     
-    // Print the output from the Python command
-    console.log(result);
-    
-    if (args.detail) {
-      console.log("💾 Environment variables passed to Python:");
-      console.log(`   CHAIN_ID: ${chainId}`);
-      console.log(`   CONTRACT_ARTIFACT: <JSON data available${contractName ? ` for ${contractName}` : ''}>`);
-      console.log(`   CONTRACT_SOURCE_PATH: ${contractSourcePath || '<not found>'}`);
-      console.log(`   CONTRACT_ARTIFACT_PATH: ${contractArtifactPath || '<not found>'}`);
-      if (process.env["DEPLOYED_CONTRACT_ADDRESS"]) {
-        console.log(`   DEPLOYED_CONTRACT_ADDRESS: ${process.env["DEPLOYED_CONTRACT_ADDRESS"]}`);
-      }
-    }
-    
-    console.log(`✅ ERC-7730 descriptor generated successfully!`);
-    
-    // Check if file was created and provide feedback
-    const { existsSync } = await import("fs");
-    if (existsSync(outputPath)) {
-      console.log(`📄 File saved: ${outputPath}`);
-    } else {
-      console.warn(`⚠️  Output file not found at expected location: ${outputPath}`);
-    }
+    // Success - the Python command completed
+    console.log("✅ ERC-7730 descriptor generated successfully!");
+    console.log(`📄 File saved: ${outputPath}`);
     
   } catch (error) {
     console.error("❌ Error executing Python command:", error);
