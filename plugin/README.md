@@ -11,6 +11,7 @@ A basic Hardhat 3 plugin that adds a `generate-7730` task that executes Python c
 - Built for Hardhat 3 using the new plugin architecture
 - Hooks into compilation process with the `--generate-7-7-3-0` global flag
 - **NEW**: Adds a `publish-kg` task for publishing Smart Contract Metadata to The Graph Knowledge Graph
+- **NEW**: Adds a `fetch-kg` task for retrieving Smart Contract Metadata from The Graph Knowledge Graph
 
 ## Usage
 
@@ -48,6 +49,23 @@ export PRIVATE_KEY=0x...
 npx hardhat publish-kg --contract 0x... --chain-id 8453 --contract-name "ComplexCounter" --erc7730-file "./artifacts/ComplexCounter-erc7730.json" --testnet
 ```
 
+### Fetch from Knowledge Graph
+
+Retrieve Smart Contract Metadata from The Graph Knowledge Graph:
+
+```bash
+npx hardhat fetch-kg \
+  --contract 0x1234567890abcdef1234567890abcdef12345678 \
+  --chain-id 8453 \
+  --space-id ABC123 \
+  --testnet
+```
+
+Output as JSON:
+```bash
+npx hardhat fetch-kg --contract 0x... --chain-id 8453 --space-id ABC123 --json --testnet
+```
+
 ### Compilation Hook
 
 Run automatically after compilation:
@@ -67,10 +85,12 @@ plugin/
 ├── index.ts              # Main plugin export
 ├── tasks/
 │   ├── generate-7730.ts  # Task definition for ERC-7730 generation
-│   └── publish-kg.ts     # Task definition for Knowledge Graph publishing
+│   ├── publish-kg.ts     # Task definition for Knowledge Graph publishing
+│   └── fetch-kg.ts       # Task definition for Knowledge Graph fetching
 ├── actions/
 │   ├── generate-7730.ts  # Task action logic for ERC-7730 generation
-│   └── publish-kg.ts     # Task action logic for Knowledge Graph publishing
+│   ├── publish-kg.ts     # Task action logic for Knowledge Graph publishing
+│   └── fetch-kg.ts       # Task action logic for Knowledge Graph fetching
 ├── hook-handlers/
 │   └── solidity.ts       # Solidity compilation hooks
 └── README.md            # This file
@@ -177,6 +197,72 @@ Network: TESTNET
 ✅ Transaction sent: 0x...
 🎉 Smart Contract Metadata successfully published to Knowledge Graph!
 ```
+
+## Knowledge Graph Fetching (`fetch-kg`)
+
+The `fetch-kg` task retrieves Smart Contract Metadata from The Graph Knowledge Graph by contract address and chain ID.
+
+### What it does:
+
+1. **Searches for contract metadata** using:
+   - Contract Address
+   - Chain ID
+   - Optional Space ID for targeted search
+
+2. **Queries The Graph Knowledge Graph** by:
+   - Accessing the hypergraph API endpoints
+   - Searching through specified spaces
+   - Matching entities by contract address and chain ID
+
+3. **Returns structured metadata** including:
+   - Contract name and address
+   - Chain ID
+   - ERC-7730 JSON metadata
+   - Entity and space IDs
+
+### Parameters:
+
+- `--contract`: Contract address to search for (required)
+- `--chain-id`: Blockchain chain ID (required)
+- `--space-id`: Specific space ID to search in (optional, improves search accuracy)
+- `--testnet`: Use testnet instead of mainnet (optional)
+- `--json`: Output results as JSON format (optional)
+
+### Example Output:
+
+```
+🔍 Searching for Smart Contract Metadata in Knowledge Graph
+Contract: 0x1234567890abcdef1234567890abcdef12345678
+Chain ID: 8453
+Network: TESTNET
+📡 Querying space: ABC123
+✅ Space found, searching for contract metadata...
+
+📋 Search Results:
+──────────────────────────────────────────────────
+✅ Contract metadata found!
+📍 Entity ID: DEF456
+📝 Entity Name: ComplexCounter (8453:0x1234...)
+📄 Contract Name: ComplexCounter
+🔗 Contract Address: 0x1234567890abcdef1234567890abcdef12345678
+⛓️  Chain ID: 8453
+🏗️  Space ID: ABC123
+
+📊 ERC-7730 Metadata:
+──────────────────────────────
+{
+  "context": { ... },
+  "metadata": { ... },
+  "display": { ... }
+}
+```
+
+### Usage Notes:
+
+- **Space ID**: Providing a space ID significantly improves search performance and accuracy
+- **Global Search**: Without a space ID, the search capabilities are currently limited
+- **JSON Output**: Use `--json` flag for programmatic consumption of results
+- **Network Selection**: Ensure you're searching the correct network (testnet vs mainnet)
 
 ## Requirements
 

@@ -3,6 +3,7 @@ import { globalOption } from "hardhat/config";
 import { ArgumentType } from "hardhat/types/arguments";
 import generate7730Task from "./tasks/generate-7730.js";
 import publishKgTask from "./tasks/publish-kg.js";
+import fetchKgTask from "./tasks/fetch-kg.js";
 
 declare module "hardhat/types/global-options" {
   interface GlobalOptions {
@@ -12,7 +13,7 @@ declare module "hardhat/types/global-options" {
 
 const plugin: HardhatPlugin = {
   id: "generate-7730-plugin",
-  tasks: [generate7730Task, publishKgTask],
+  tasks: [generate7730Task, publishKgTask, fetchKgTask],
   globalOptions: [
     globalOption({
       name: "generate7730",
