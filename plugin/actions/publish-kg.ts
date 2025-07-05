@@ -1,32 +1,125 @@
 import type { NewTaskActionFunction } from "hardhat/types/tasks";
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import path from "path";
 
 export interface PublishKgTaskArguments {
+  deploymentId?: string;
   contract: string;
   chainId: string;
   contractName: string;
   erc7730File: string;
   privateKey?: string;
   spaceId?: string;
-  testnet?: boolean;
+  mainnet?: boolean;
 }
 
 const publishKgAction: NewTaskActionFunction<PublishKgTaskArguments> = async (taskArgs, hre) => {
-  const { contract, chainId, contractName, erc7730File, privateKey, spaceId, testnet } = taskArgs;
+  const { deploymentId, contract, chainId, contractName, erc7730File, privateKey, spaceId, mainnet } = taskArgs;
+  
+  // Determine if using testnet (default) or mainnet
+  const useTestnet = !mainnet;
 
-  // Validate required parameters
-  if (!contract || contract.trim() === "") {
-    throw new Error("Contract address is required. Use --contract <address>");
+  // Initialize variables that might be auto-detected from deployment
+  let finalContract = contract;
+  let finalChainId = chainId;
+  let finalContractName = contractName;
+  let finalErc7730File = erc7730File;
+
+  // Extract deployment information if deploymentId is provided
+  if (deploymentId && deploymentId.trim() !== "") {
+    console.log(`📦 Loading deployment info from: ${deploymentId}`);
+    
+    const deploymentPath = path.resolve("ignition", "deployments", deploymentId);
+    
+    try {
+      const { existsSync, readdirSync } = await import("fs");
+      
+      if (!existsSync(deploymentPath)) {
+        throw new Error(`⚠️  Deployment '${deploymentId}' not found at ${deploymentPath}`);
+      }
+
+      // 1. Extract Chain ID (from folder name or journal)
+      if (!finalChainId || finalChainId.trim() === "") {
+        const chainIdMatch = deploymentId.match(/chain-(\d+)/);
+        if (chainIdMatch) {
+          finalChainId = chainIdMatch[1];
+        } else {
+          // Read from journal for chainId
+          try {
+            const journalPath = path.join(deploymentPath, "journal.jsonl");
+            const firstLine = readFileSync(journalPath, "utf-8").split("\n")[1];
+            if (firstLine) {
+              const parsed = JSON.parse(firstLine);
+              if (parsed.chainId) {
+                finalChainId = parsed.chainId.toString();
+              }
+            }
+          } catch (e) {
+            console.warn("⚠️  Could not extract chain ID from journal");
+          }
+        }
+      }
+
+      // 2. Extract deployed address and contract name
+      if (!finalContract || finalContract.trim() === "" || !finalContractName || finalContractName.trim() === "") {
+        const deployedAddrPath = path.join(deploymentPath, "deployed_addresses.json");
+        try {
+          const deployedJson = JSON.parse(readFileSync(deployedAddrPath, "utf-8")) as Record<string, string>;
+          const firstKey = Object.keys(deployedJson)[0];
+          
+          if (!finalContract || finalContract.trim() === "") {
+            finalContract = deployedJson[firstKey];
+          }
+          if (!finalContractName || finalContractName.trim() === "") {
+            finalContractName = firstKey.split("#").pop() || firstKey;
+          }
+        } catch (e) {
+          console.warn("⚠️  Could not read deployed_addresses.json:", (e as Error).message);
+        }
+      }
+
+      // 3. Find ERC-7730 file in artifacts
+      if (!finalErc7730File || finalErc7730File.trim() === "") {
+        const artifactsDir = path.join(deploymentPath, "artifacts");
+        try {
+          const artifactFiles = readdirSync(artifactsDir).filter(
+            (f) => f.endsWith("-erc7730.json")
+          );
+          
+          if (artifactFiles.length > 0) {
+            finalErc7730File = path.join(artifactsDir, artifactFiles[0]);
+          } else {
+            console.warn("⚠️  No ERC-7730 file found in deployment artifacts");
+          }
+        } catch (e) {
+          console.warn("⚠️  Could not read deployment artifacts directory:", (e as Error).message);
+        }
+      }
+
+      console.log(`✅ Extracted deployment info:`);
+      console.log(`   📄 Contract: ${finalContractName} (${finalContract})`);
+      console.log(`   ⛓️  Chain ID: ${finalChainId}`);
+      console.log(`   📋 ERC-7730 File: ${finalErc7730File}`);
+      
+    } catch (error) {
+      console.error("❌ Error loading deployment info:", error);
+      throw error;
+    }
   }
-  if (!chainId || chainId.trim() === "") {
-    throw new Error("Chain ID is required. Use --chain-id <chainId>");
+
+  // Validate that we have all required information (either provided directly or extracted from deployment)
+  if (!finalContract || finalContract.trim() === "") {
+    throw new Error("Contract address is required. Provide --contract <address> or use --deployment-id to auto-detect");
   }
-  if (!contractName || contractName.trim() === "") {
-    throw new Error("Contract name is required. Use --contract-name <name>");
+  if (!finalChainId || finalChainId.trim() === "") {
+    throw new Error("Chain ID is required. Provide --chain-id <chainId> or use --deployment-id to auto-detect");
   }
-  if (!erc7730File || erc7730File.trim() === "") {
-    throw new Error("ERC-7730 file path is required. Use --erc7730-file <path>");
+  if (!finalContractName || finalContractName.trim() === "") {
+    throw new Error("Contract name is required. Provide --contract-name <name> or use --deployment-id to auto-detect");
+  }
+  if (!finalErc7730File || finalErc7730File.trim() === "") {
+    throw new Error("ERC-7730 file path is required. Provide --erc7730-file <path> or use --deployment-id to auto-detect");
   }
 
   try {
@@ -47,15 +140,16 @@ const publishKgAction: NewTaskActionFunction<PublishKgTaskArguments> = async (ta
     }
 
     // Read and parse ERC-7730 file
-    const erc7730Path = resolve(erc7730File);
+    const erc7730Path = resolve(finalErc7730File);
     const erc7730Content = readFileSync(erc7730Path, "utf8");
     const erc7730Data = JSON.parse(erc7730Content);
 
     console.log("📋 Publishing Smart Contract Metadata to Knowledge Graph");
-    console.log(`Contract: ${contract}`);
-    console.log(`Chain ID: ${chainId}`);
-    console.log(`Contract Name: ${contractName}`);
-    console.log(`Network: ${testnet ? "TESTNET" : "MAINNET"}`);
+    console.log(`Contract: ${finalContract}`);
+    console.log(`Chain ID: ${finalChainId}`);
+    console.log(`Contract Name: ${finalContractName}`);
+    console.log(`Network: ${useTestnet ? "TESTNET" : "MAINNET"}`);
+    console.log(`Space ID: ${spaceId}`);
 
     // Setup wallet
     const { address } = privateKeyToAccount(formattedPrivateKey as `0x${string}`);
@@ -64,23 +158,12 @@ const publishKgAction: NewTaskActionFunction<PublishKgTaskArguments> = async (ta
     const smartAccountWalletClient = await getSmartAccountWalletClient({
       privateKey: formattedPrivateKey as `0x${string}`,
       // Use testnet RPC if needed
-      ...(testnet && { rpcUrl: "https://sepolia.base.org" }),
+      ...(useTestnet && { rpcUrl: "https://sepolia.base.org" }),
     });
 
-    // Create or use existing space
-    let currentSpaceId = spaceId;
-    if (!currentSpaceId) {
-      console.log("🏗️  Creating new space for Smart Contract Metadata...");
-      const spaceResult = await Graph.createSpace({
-        editorAddress: address,
-        name: "Smart Contract Metadata",
-        network: testnet ? "TESTNET" : "MAINNET",
-      });
-      currentSpaceId = spaceResult.id;
-      console.log(`✅ Created space: ${currentSpaceId}`);
-    } else {
-      console.log(`📍 Using existing space: ${currentSpaceId}`);
-    }
+    // Use the provided space ID (defaults to the Smart Contract Metadata space)
+    const currentSpaceId = spaceId;
+    console.log(`📍 Using space: ${currentSpaceId}`);
 
     // Create properties for our metadata
     const ops: any[] = [];
@@ -122,21 +205,21 @@ const publishKgAction: NewTaskActionFunction<PublishKgTaskArguments> = async (ta
 
     // Create the entity for this specific contract
     const { id: contractEntityId, ops: contractEntityOps } = Graph.createEntity({
-      name: `${contractName} (${chainId}:${contract})`,
-      description: `ERC-7730 metadata for ${contractName} contract on chain ${chainId}`,
+      name: `${finalContractName} (${finalChainId}:${finalContract})`,
+      description: `ERC-7730 metadata for ${finalContractName} contract on chain ${finalChainId}`,
       types: [smartContractTypeId],
       values: [
         {
           property: contractAddressPropertyId,
-          value: contract,
+          value: finalContract,
         },
         {
           property: chainIdPropertyId,
-          value: chainId,
+          value: finalChainId,
         },
         {
           property: contractNamePropertyId,
-          value: contractName,
+          value: finalContractName,
         },
         {
           property: erc7730PropertyId,
@@ -151,16 +234,16 @@ const publishKgAction: NewTaskActionFunction<PublishKgTaskArguments> = async (ta
     // Publish to IPFS
     console.log("📤 Publishing to IPFS...");
     const { cid } = await Ipfs.publishEdit({
-      name: `Smart Contract Metadata: ${contractName}`,
+      name: `Smart Contract Metadata: ${finalContractName}`,
       ops,
       author: address,
-      network: testnet ? "TESTNET" : "MAINNET",
+      network: useTestnet ? "TESTNET" : "MAINNET",
     });
 
     console.log(`📝 IPFS CID: ${cid}`);
 
     // Get calldata for transaction
-    const apiOrigin = testnet 
+    const apiOrigin = useTestnet 
       ? "https://hypergraph-v2-testnet.up.railway.app"
       : "https://hypergraph-v2.up.railway.app";
 

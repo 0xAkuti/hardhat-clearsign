@@ -4,7 +4,7 @@ export interface FetchKgTaskArguments {
   contract: string;
   chainId: string;
   spaceId?: string;
-  testnet?: boolean;
+  mainnet?: boolean;
   json?: boolean;
 }
 
@@ -20,7 +20,10 @@ interface ContractMetadata {
 }
 
 const fetchKgAction: NewTaskActionFunction<FetchKgTaskArguments> = async (taskArgs, hre) => {
-  const { contract, chainId, spaceId, testnet, json } = taskArgs;
+  const { contract, chainId, spaceId, mainnet, json } = taskArgs;
+  
+  // Determine if using testnet (default) or mainnet
+  const useTestnet = !mainnet;
 
   // Validate required parameters
   if (!contract || contract.trim() === "") {
@@ -34,21 +37,15 @@ const fetchKgAction: NewTaskActionFunction<FetchKgTaskArguments> = async (taskAr
     console.log("🔍 Searching for Smart Contract Metadata in Knowledge Graph");
     console.log(`Contract: ${contract}`);
     console.log(`Chain ID: ${chainId}`);
-    console.log(`Network: ${testnet ? "TESTNET" : "MAINNET"}`);
+    console.log(`Network: ${useTestnet ? "TESTNET" : "MAINNET"}`);
+    console.log(`Space ID: ${spaceId}`);
 
     // Determine API endpoint
-    const apiOrigin = testnet 
+    const apiOrigin = useTestnet 
       ? "https://hypergraph-v2-testnet.up.railway.app"
       : "https://hypergraph-v2.up.railway.app";
 
-    let searchSpaceId = spaceId;
-    
-    // If no space ID provided, try to find default Smart Contract Metadata space
-    if (!searchSpaceId) {
-      console.log("🏗️  No space ID provided, searching for Smart Contract Metadata spaces...");
-      // This would require additional API endpoints that may not be available
-      // For now, we'll require a space ID or implement a broader search
-    }
+    const searchSpaceId = spaceId;
 
     const result: ContractMetadata = {
       id: "",

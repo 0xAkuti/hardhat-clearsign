@@ -19,11 +19,11 @@ const fetchKgTask: NewTaskDefinition = task("fetch-kg")
   })
   .addOption({
     name: "spaceId",
-    description: "Space ID to search in (if not provided, will search default Smart Contract Metadata space)",
+    description: "Space ID to search in",
     type: ArgumentType.STRING,
-    defaultValue: "",
+    defaultValue: "10ea8392-1c7e-4866-8559-eeea7b4722ef",
   })
-  .addFlag({ name: "testnet", description: "Use testnet instead of mainnet" })
+  .addFlag({ name: "mainnet", description: "Use mainnet instead of testnet (defaults to testnet)" })
   .addFlag({ name: "json", description: "Output results as JSON" })
   .build();
 

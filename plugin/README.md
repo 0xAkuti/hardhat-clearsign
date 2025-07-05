@@ -33,20 +33,25 @@ npx hardhat generate-7730 --detail
 
 Publish Smart Contract Metadata to The Graph Knowledge Graph:
 
+**Easy way (recommended) - using deployment ID:**
+```bash
+export PRIVATE_KEY=0x...
+npx hardhat publish-kg --deployment-id "your-deployment-id"
+```
+
+**Manual way - providing all parameters:**
 ```bash
 npx hardhat publish-kg \
   --contract 0x1234567890abcdef1234567890abcdef12345678 \
   --chain-id 8453 \
   --contract-name "ComplexCounter" \
   --erc7730-file "./artifacts/ComplexCounter-erc7730.json" \
-  --private-key 0x... \
-  --testnet
+  --private-key 0x...
 ```
 
-Environment variables can be used instead of CLI params:
+**Use mainnet instead of testnet (defaults to testnet):**
 ```bash
-export PRIVATE_KEY=0x...
-npx hardhat publish-kg --contract 0x... --chain-id 8453 --contract-name "ComplexCounter" --erc7730-file "./artifacts/ComplexCounter-erc7730.json" --testnet
+npx hardhat publish-kg --deployment-id "your-deployment-id" --mainnet
 ```
 
 ### Fetch from Knowledge Graph
@@ -171,24 +176,36 @@ The `publish-kg` task publishes Smart Contract Metadata to The Graph Knowledge G
 
 ### Parameters:
 
-- `--contract`: Contract address (required)
-- `--chain-id`: Blockchain chain ID (required)
-- `--contract-name`: Name of the contract (required)
-- `--erc7730-file`: Path to the ERC-7730 JSON file (required)
-- `--private-key`: Wallet private key (optional, can use PRIVATE_KEY env var)
-- `--space-id`: Existing space ID to use (optional, creates new space if not provided)
-- `--testnet`: Use testnet instead of mainnet (optional)
+**Recommended approach:**
+- `--deployment-id`: Ignition deployment ID to auto-extract all contract information (recommended)
+
+**Manual parameters (optional when using deployment-id):**
+- `--contract`: Contract address to publish metadata for (auto-detected from deployment)
+- `--chain-id`: Blockchain chain ID (auto-detected from deployment)
+- `--contract-name`: Name of the contract (auto-detected from deployment)
+- `--erc7730-file`: Path to the ERC-7730 JSON file (auto-detected from deployment)
+
+**Other options:**
+- `--private-key`: Wallet private key (can use PRIVATE_KEY env var)
+- `--space-id`: Space ID to publish to (defaults to Smart Contract Metadata space: `10ea8392-1c7e-4866-8559-eeea7b4722ef`)
+- `--mainnet`: Use mainnet instead of testnet (defaults to testnet)
 
 ### Example Output:
 
 ```
+📦 Loading deployment info from: d-1
+✅ Extracted deployment info:
+   📄 Contract: ComplexCounter (0x1234567890abcdef1234567890abcdef12345678)
+   ⛓️  Chain ID: 31337
+   📋 ERC-7730 File: /path/to/ignition/deployments/d-1/artifacts/ComplexCounter-erc7730.json
 📋 Publishing Smart Contract Metadata to Knowledge Graph
 Contract: 0x1234567890abcdef1234567890abcdef12345678
-Chain ID: 8453
+Chain ID: 31337
 Contract Name: ComplexCounter
 Network: TESTNET
+Space ID: 10ea8392-1c7e-4866-8559-eeea7b4722ef
 📱 Wallet address: 0x...
-✅ Created space: ABC123
+📍 Using space: 10ea8392-1c7e-4866-8559-eeea7b4722ef
 🔗 Created entity: DEF456
 📤 Publishing to IPFS...
 📝 IPFS CID: ipfs://QmXYZ...
@@ -196,6 +213,10 @@ Network: TESTNET
 🚀 Sending transaction...
 ✅ Transaction sent: 0x...
 🎉 Smart Contract Metadata successfully published to Knowledge Graph!
+📍 Space ID: 10ea8392-1c7e-4866-8559-eeea7b4722ef
+🔗 Entity ID: DEF456
+📝 IPFS CID: ipfs://QmXYZ...
+💎 Transaction Hash: 0x...
 ```
 
 ## Knowledge Graph Fetching (`fetch-kg`)
