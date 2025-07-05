@@ -81,6 +81,7 @@ The plugin automatically passes the following environment variables to the Pytho
 - `CHAIN_ID`: The blockchain network's chain ID (e.g., "31337" for Hardhat Network)
 - `CONTRACT_ARTIFACT`: Complete JSON artifact of the main compiled contract including ABI, bytecode, and metadata
 - `CONTRACT_SOURCE_PATH`: Absolute path to the Solidity source file of the main contract (e.g., `/workspaces/ethglobal-cannes/hh-plugin/contracts/ComplexCounter.sol`)
+- `CONTRACT_ARTIFACT_PATH`: Absolute path to the artifact JSON file of the main contract (e.g., `/workspaces/ethglobal-cannes/hh-plugin/artifacts/contracts/ComplexCounter.sol/ComplexCounter.json`)
 
 ### Example Python Usage
 
@@ -92,6 +93,7 @@ import json
 chain_id = os.environ.get('CHAIN_ID')
 artifact_json = os.environ.get('CONTRACT_ARTIFACT')
 source_path = os.environ.get('CONTRACT_SOURCE_PATH')
+artifact_path = os.environ.get('CONTRACT_ARTIFACT_PATH')
 
 if artifact_json:
     artifact = json.loads(artifact_json)
@@ -100,6 +102,7 @@ if artifact_json:
     # Process the ABI for ERC7730 generation
     print(f"Generating ERC7730 for {contract_name} on chain {chain_id}")
     print(f"Source file (absolute): {source_path}")
+    print(f"Artifact file (absolute): {artifact_path}")
 ```
 
 ## Requirements
