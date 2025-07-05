@@ -48,6 +48,7 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
     let contractName = "";
     let contractSourcePath = "";
     let contractArtifactPath = "";
+    let deployedAddress = "";
     
     try {
       // If a deploymentId is provided, attempt to load data from the Ignition deployment folder
@@ -90,7 +91,6 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
             deploymentPath,
             "deployed_addresses.json"
           );
-          let deployedAddress = "";
           try {
             const deployedJson = JSON.parse(
               readFileSync(deployedAddrPath, "utf-8")
@@ -106,7 +106,7 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
           const artifactsDir = path.join(deploymentPath, "artifacts");
           const { readdirSync } = await import("fs");
           const artifactFiles = readdirSync(artifactsDir).filter(
-            (f) => f.endsWith(".json") && !f.endsWith(".dbg.json")
+            (f) => f.endsWith(".json") && !f.endsWith(".dbg.json") && !f.endsWith("-erc7730.json")
           );
           if (artifactFiles.length > 0) {
             const artifactPath = path.join(artifactsDir, artifactFiles[0]);
@@ -264,11 +264,10 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
         stdio: ["pipe", "pipe", "pipe"],
         env: {
           ...process.env,
-          CHAIN_ID: chainId,
-          CONTRACT_ARTIFACT: artifactJson,
+          CHAIN_ID: chainId.toString(),
           CONTRACT_SOURCE_PATH: contractSourcePath,
           CONTRACT_ARTIFACT_PATH: contractArtifactPath,
-          DEPLOYED_CONTRACT_ADDRESS: process.env["DEPLOYED_CONTRACT_ADDRESS"] || "",
+          DEPLOYED_CONTRACT_ADDRESS: deployedAddress,
         }
       });
       
@@ -287,6 +286,8 @@ const action: NewTaskActionFunction<TaskActionArguments> = async (
         if (code === 0) {
           resolve(stdout);
         } else {
+          console.log("Python stdout:", stdout);
+          console.log("Python stderr:", stderr);
           reject(new Error(`Python command failed with code ${code}: ${stderr}`));
         }
       });
