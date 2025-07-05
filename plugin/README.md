@@ -5,7 +5,8 @@ A basic Hardhat 3 plugin that adds a `generate-7730` task that executes Python c
 ## Features
 
 - Adds a new task called `generate-7730`
-- Executes Python commands using `uvx pycowsay Hello from Hardhat`
+- Executes Python commands with network context and contract artifacts
+- Passes chainId and main contract artifact JSON to Python via environment variables
 - Supports detailed output with the `--detail` flag
 - Built for Hardhat 3 using the new plugin architecture
 - Hooks into compilation process with the `--generate-7-7-3-0` global flag
@@ -69,9 +70,34 @@ const config: HardhatUserConfig = {
 
 To extend this plugin:
 
-1. Modify the Python command in `actions/generate-7730.ts` (currently uses `uvx pycowsay Hello from Hardhat`)
+1. Modify the Python command in `actions/generate-7730.ts` (currently uses `uvx pycowsay`)
 2. Add additional flags or parameters in `tasks/generate-7730.ts`
 3. Create additional tasks by adding them to the `tasks` array in `index.ts`
+
+### Environment Variables Passed to Python
+
+The plugin automatically passes the following environment variables to the Python process:
+
+- `CHAIN_ID`: The blockchain network's chain ID (e.g., "31337" for Hardhat Network)
+- `CONTRACT_ARTIFACT`: Complete JSON artifact of the main compiled contract including ABI, bytecode, and metadata
+
+### Example Python Usage
+
+```python
+import os
+import json
+
+# Access the passed data
+chain_id = os.environ.get('CHAIN_ID')
+artifact_json = os.environ.get('CONTRACT_ARTIFACT')
+
+if artifact_json:
+    artifact = json.loads(artifact_json)
+    contract_name = artifact.get('contractName', 'Unknown')
+    abi = artifact.get('abi', [])
+    # Process the ABI for ERC7730 generation
+    print(f"Generating ERC7730 for {contract_name} on chain {chain_id}")
+```
 
 ## Requirements
 
