@@ -1,63 +1,169 @@
-# Example Hardhat 3 Project: Clearsign Plugin for ERC7730 Generation
+# ClearSignKit - Hardhat 3 Plugin
 
-This repository is an example Hardhat 3 project created to demonstrate the **clearsign plugin**, which generates [ERC7730](https://eips.ethereum.org/EIPS/eip-7730) compliant metadata for smart contracts. ERC7730 is a new Ethereum standard for contract interface discovery and machine-readable metadata, designed to improve contract interoperability and developer tooling. You can find more about ERC7730 online and in the official EIP.
+**Seamless ERC-7730 clear signing integration for Hardhat 3 development workflows**
 
-The **clearsign plugin** is built using the new Hardhat 3 plugin architecture, showcasing best practices for modern plugin development. It integrates with the Hardhat compilation process and exposes a custom task to generate ERC7730 JSON using both contract artifacts and source code. The plugin is designed for extensibility and real-world use, and is demonstrated here as part of our submission for the **EthGlobal Cannes Hackathon**.
+This repository contains a Hardhat 3 plugin that automates the generation and publishing of ERC-7730 clear signing schemas directly from your smart contract development workflow. Built specifically for Hardhat 3's new architecture, it integrates with Ignition deployments and The Graph's Knowledge Graph for decentralized schema storage.
 
----
+## 🚀 Key Features
 
-## Plugin Features
+### Hardhat 3 Native Integration
 
-- Hardhat 3 compatible plugin architecture
-- Custom task: `generate-7730` for generating ERC7730 metadata
-- Compilation hook: automatically runs after compile with `--generate-7-7-3-0`
-- Passes contract artifact, source file, and network context to downstream tools (e.g., Python)
-- Example integration for further ERC7730 processing
+- **Modern Plugin Architecture**: Built specifically for Hardhat 3.0.0-next.\* versions
+- **TypeScript Support**: Full TypeScript integration with modern ES modules
+- **Ignition Integration**: Seamlessly works with Hardhat Ignition deployment IDs
+- **Post-compilation Hooks**: Automatic schema generation after contract compilation
 
-## Usage
+### AI-Powered Schema Generation
 
-1. Install dependencies and build the project:
-   ```sh
-   npm install
-   npx hardhat compile
-   ```
-2. Run the custom task:
-   ```sh
-   npx hardhat generate-7730 --detail
-   ```
-3. Or use the compilation hook:
-   ```sh
-   npx hardhat compile --generate-7-7-3-0
-   ```
+- **Automatic Analysis**: Uses our AI-enhanced python-erc7730 engine
+- **Local Artifact Processing**: Processes contracts from Hardhat build artifacts
+- **Context-Aware Generation**: Includes source code and documentation for better AI inference
+- **Validation**: Built-in ERC-7730 schema validation
 
-## Environment Variables Passed to Python
+### Knowledge Graph Publishing
 
-- `CHAIN_ID`: The blockchain network's chain ID (e.g., "31337" for Hardhat Network)
-- `CONTRACT_ARTIFACT`: Complete JSON artifact of the main compiled contract including ABI, bytecode, and metadata
-- `CONTRACT_SOURCE_PATH`: Absolute path to the Solidity source file of the main contract (e.g., `/workspaces/ethglobal-cannes/hh-plugin/contracts/ComplexCounter.sol`)
-- `CONTRACT_ARTIFACT_PATH`: Absolute path to the artifact JSON file of the main contract (e.g., `/workspaces/ethglobal-cannes/hh-plugin/artifacts/contracts/ComplexCounter.sol/ComplexCounter.json`)
+- **Decentralized Storage**: Publish schemas to The Graph's GRC-20 Knowledge Graph
+- **Cross-chain Support**: Works with any network supported by Hardhat 3
+- **Public Repository**: Makes schemas discoverable by wallets and dApps
+- **Version Control**: Track schema versions and updates
 
-### Example Python Usage
+## 🔧 Installation
 
-```python
-import os
-import json
+### Prerequisites
 
-chain_id = os.environ.get('CHAIN_ID')
-artifact_json = os.environ.get('CONTRACT_ARTIFACT')
-source_path = os.environ.get('CONTRACT_SOURCE_PATH')
-artifact_path = os.environ.get('CONTRACT_ARTIFACT_PATH')
+- **Hardhat 3 Alpha**: Must use `hardhat@^3.0.0-next.*`
+- **Node.js**: Version 18 or later
+- **Python**: For AI-powered schema generation (optional)
 
-if artifact_json:
-    artifact = json.loads(artifact_json)
-    contract_name = artifact.get('contractName', 'Unknown')
-    abi = artifact.get('abi', [])
-    # Process the ABI for ERC7730 generation
-    print(f"Generating ERC7730 for {contract_name} on chain {chain_id}")
-    print(f"Source file (absolute): {source_path}")
-    print(f"Artifact file (absolute): {artifact_path}")
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/0xAkuti/hardhat-clearsign.git
+cd hardhat-clearsign
+
+# Install dependencies
+npm install
+
+# Compile contracts
+npx hardhat compile
 ```
 
----
+## 📖 Usage
 
-For more details on ERC7730, see the [official EIP-7730](https://eips.ethereum.org/EIPS/eip-7730) and related resources online.
+### Basic Commands
+
+```bash
+# Generate ERC-7730 schema for deployed contracts
+npx hardhat generate-7730 --deployment-id my-deployment
+
+# Publish schema to The Graph Knowledge Graph
+npx hardhat publish-kg --deployment-id my-deployment --private-key 0x...
+
+# Fetch existing schemas from Knowledge Graph
+npx hardhat fetch-kg --deployment-id my-deployment
+
+# Generate schemas automatically during compilation
+npx hardhat compile --generate7730
+```
+
+### Advanced Usage
+
+```bash
+# Generate with detailed output
+npx hardhat generate-7730 --deployment-id my-deployment --detail
+
+# Specify custom chain ID
+npx hardhat generate-7730 --deployment-id my-deployment --chain-id 137
+
+# Use custom AI model
+OPENAI_MODEL=gpt-4 npx hardhat generate-7730 --deployment-id my-deployment
+```
+
+### Environment Configuration
+
+Create a `.env` file for AI and Knowledge Graph features:
+
+```env
+# AI Configuration (for automatic schema generation)
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_BASE_URL=https://api.openai.com/v1  # Optional
+OPENAI_MODEL=gpt-4o-mini  # Optional
+
+# Knowledge Graph Configuration
+GRC20_PRIVATE_KEY=your_wallet_private_key  # For publishing schemas
+```
+
+## 🛠️ Plugin Architecture
+
+### Custom Tasks
+
+The plugin provides three main tasks:
+
+1. **`generate-7730`**: Generate ERC-7730 schemas from deployment artifacts
+2. **`publish-kg`**: Publish schemas to The Graph's Knowledge Graph
+3. **`fetch-kg`**: Retrieve existing schemas from the Knowledge Graph
+
+### Global Options
+
+- **`--generate7730`**: Enable automatic schema generation during compilation
+
+### Hook Integration
+
+The plugin hooks into Hardhat's compilation process to automatically generate schemas when the `--generate7730` flag is used.
+
+## 🔗 Integration with ClearSignKit Ecosystem
+
+This plugin is part of the larger ClearSignKit toolkit:
+
+- **[python-erc7730](https://github.com/0xAkuti/python-erc7730)**: AI-powered schema generation engine
+- **[clear-signing-erc7730-builder](https://github.com/0xAkuti/clear-signing-erc7730-builder)**: Visual web interface
+- **hardhat-clearsign** (this repo): Hardhat 3 development plugin
+
+## 🏗️ Technical Implementation
+
+### Hardhat 3 Features Utilized
+
+- **Modern Plugin System**: Uses Hardhat 3's improved plugin architecture
+- **TypeScript Native**: Full TypeScript support with proper type checking
+- **ES Modules**: Modern JavaScript module system
+- **Viem Integration**: Modern Ethereum library for contract interactions
+- **Ignition Integration**: Seamless integration with Hardhat Ignition deployments
+
+### Data Flow
+
+1. **Deployment Detection**: Plugin detects Ignition deployment IDs
+2. **Artifact Processing**: Extracts contract artifacts and metadata
+3. **AI Analysis**: Calls python-erc7730 engine for schema generation
+4. **Knowledge Graph**: Publishes schemas using GRC-20-ts library
+5. **Validation**: Ensures schemas meet ERC-7730 standards
+
+### Environment Variables (Internal)
+
+When calling the Python engine, the plugin passes:
+
+- `CHAIN_ID`: Network chain ID from deployment
+- `CONTRACT_ARTIFACT`: Complete contract artifact JSON
+- `CONTRACT_SOURCE_PATH`: Path to Solidity source file
+- `CONTRACT_ARTIFACT_PATH`: Path to artifact JSON file
+- `CONTRACT_ADDRESS`: Deployed contract address
+- `CONTRACT_NAME`: Contract name from artifact
+
+## 🎯 Example Workflow
+
+### Developer Experience
+
+```bash
+# 1. Deploy your contract with Ignition
+npx hardhat ignition deploy ./ignition/modules/MyContract.ts --network sepolia --deployment-id my-deployment
+
+# 2. Generate ERC-7730 schema automatically
+npx hardhat generate-7730 --deployment-id my-deployment
+
+# 3. Publish to Knowledge Graph for wallet integration
+npx hardhat publish-kg --deployment-id my-deployment --private-key $PRIVATE_KEY
+```
+
+## 🤝 Contributing
+
+This plugin showcases Hardhat 3's capabilities and serves as an example for the community. Contributions and improvements are welcome!
